@@ -75,6 +75,8 @@ enum WifiCommands {
     LsDir(LsDirArgs),
     /// Remove a file from the device
     RmFile(RmFileArgs),
+    /// Remove a directory from the device
+    RmDir(RmDirArgs),
     /// Run a shell command on the device
     ExecuteCommand {
         /// The command to run
@@ -150,6 +152,15 @@ struct LsDirArgs {
 struct RmFileArgs {
     /// Path of the file to remove on the device
     path: String,
+}
+
+#[derive(Debug, Args)]
+struct RmDirArgs {
+    /// Path of the directory to remove on the device
+    path: String,
+    /// Recursively remove the directory and its contents
+    #[arg(short = 'r', long, default_value = "false")]
+    recursive: bool,
 }
 
 #[derive(Debug, Args)]
@@ -556,6 +567,17 @@ async fn run_wifi_commands(
             let (serial, creds) = get_active_device(store, device_arg)?;
             let client = BoppoDeviceHttpsClient::new(device_url(serial), &creds.password)?;
             client.remove_file(&args.path).await?;
+            eprintln!("Removed {}", args.path);
+        }
+
+        WifiCommands::RmDir(args) => {
+            let (serial, creds) = get_active_device(store, device_arg)?;
+            let client = BoppoDeviceHttpsClient::new(device_url(serial), &creds.password)?;
+            if args.recursive {
+                client.remove_dir_all(&args.path).await?;
+            } else {
+                client.remove_dir(&args.path).await?;
+            }
             eprintln!("Removed {}", args.path);
         }
 
